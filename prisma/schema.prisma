@@ -1,0 +1,158 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// --------------------------------------------------
+// DATA MODELS
+// --------------------------------------------------
+
+model User {
+  id                  String              @id @default(cuid())
+  email               String              @unique
+  password            String
+  firstName           String
+  lastName            String
+  role                Role                @default(STUDENT)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  createdQuestionSets QuestionSet[]
+  createdTemplates    MockExamTemplate[]
+  scheduledExams      ScheduledMockExam[]
+}
+
+model QuestionSet {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  section     Section
+  passage     String?
+  adminId     String
+  admin       User    @relation(fields: [adminId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  questions Question[]
+}
+
+model Question {
+  id           String       @id @default(cuid())
+  section      Section
+  questionType QuestionType
+  partNumber   Int?
+  content      Json
+
+  answer Json
+
+  explanation String?
+
+  questionSetId String
+  questionSet   QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  templates      MockExamTemplateQuestion[]
+  studentAnswers StudentAnswer[]
+}
+
+model MockExamTemplate {
+  id                String                     @id @default(cuid())
+  title             String
+  description       String?
+  durationInMinutes Int                        @default(0)
+  sectionDurations  Json?
+  audioFiles        Json?
+  adminId           String
+  admin             User                       @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  questions         MockExamTemplateQuestion[]
+  scheduledExams    ScheduledMockExam[]
+}
+
+model MockExamTemplateQuestion {
+  id         String           @id @default(cuid())
+  templateId String
+  template   MockExamTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question         @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  order      Int
+
+  @@unique([templateId, questionId])
+  @@unique([templateId, order])
+}
+
+model ScheduledMockExam {
+  id         String           @id @default(cuid())
+  studentId  String
+  student    User             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  templateId String
+  template   MockExamTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  startAvailableAt DateTime
+  endAvailableAt   DateTime
+  startedAt        DateTime?
+  completedAt      DateTime?
+  status           ExamStatus      @default(SCHEDULED)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  studentAnswers   StudentAnswer[]
+}
+
+model StudentAnswer {
+  id              String            @id @default(cuid())
+  scheduledExamId String
+  scheduledExam   ScheduledMockExam @relation(fields: [scheduledExamId], references: [id], onDelete: Cascade)
+  questionId      String
+  question        Question          @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  answer          Json
+  isCorrect       Boolean?
+  score           Float?
+  feedback        String?
+  submittedAt     DateTime          @default(now())
+}
+
+// --------------------------------------------------
+// ENUMS
+// --------------------------------------------------
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum Section {
+  LISTENING
+  READING
+  WRITING
+}
+
+enum QuestionType {
+  INSTRUCTION
+  IMAGE_DISPLAY
+  GAP_FILLING
+  MULTIPLE_CHOICE_SINGLE_ANSWER
+  MULTIPLE_CHOICE_MULTIPLE_ANSWER
+  MATCHING
+  TRUE_FALSE_NOT_GIVEN
+  MAP_LABELING
+  SUMMARY_COMPLETION
+  WRITING_PROMPT
+}
+
+enum ExamStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  MARKED
+  RESULTS_RELEASED
+}
