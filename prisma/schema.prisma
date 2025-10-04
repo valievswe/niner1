@@ -28,12 +28,22 @@ model User {
   scheduledExams      ScheduledMockExam[]
 }
 
+model Passage {
+  id            String   @id @default(cuid())
+  partNumber    Int
+  text          String
+  questionSetId String
+  questionSet   QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
+  
+  @@unique([questionSetId, partNumber])
+}
+
 model QuestionSet {
   id          String  @id @default(cuid())
   name        String
   description String?
   section     Section
-  passage     String?
+  passages    Passage[]
   adminId     String
   admin       User    @relation(fields: [adminId], references: [id], onDelete: Restrict)
 
@@ -42,6 +52,8 @@ model QuestionSet {
 
   questions Question[]
 }
+
+
 
 model Question {
   id           String       @id @default(cuid())

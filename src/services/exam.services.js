@@ -70,7 +70,9 @@ class ExamService {
                 question: {
                   include: {
                     questionSet: {
-                      select: { passage: true },
+                      include: {
+                        passages: true,
+                      },
                     },
                   },
                 },
@@ -287,7 +289,9 @@ class ExamService {
             question: {
               include: {
                 questionSet: {
-                  select: { passage: true },
+                  include: {
+                    passages: true,
+                  },
                 },
               },
             },
