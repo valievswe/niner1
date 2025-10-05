@@ -20,6 +20,13 @@ router.get(
   catchAsync(questionSetController.getAll)
 );
 
+router.get(
+  "/:id",
+  authenticateToken,
+  authorizeRole("ADMIN"),
+  catchAsync(questionSetController.getById)
+);
+
 router.put(
   "/:id",
   authenticateToken,

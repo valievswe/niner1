@@ -82,9 +82,20 @@ class QuestionService {
   }
 
   async deleteQuestion(id) {
-    return prisma.question.delete({
-      where: { id: id },
-    });
+    const [templates, answers] = await Promise.all([
+      prisma.mockExamTemplateQuestion.count({ where: { questionId: id } }),
+      prisma.studentAnswer.count({ where: { questionId: id } }),
+    ]);
+
+    if (templates > 0 || answers > 0) {
+      const error = new Error(
+        "Cannot delete this question because it is still in use by exams or has student responses."
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return prisma.question.delete({ where: { id } });
   }
 }
 

@@ -103,6 +103,14 @@ class QuestionSetController {
       });
     }
   }
+
+  async getById(req, res) {
+    const set = await questionSetService.getSetById(req.params.id);
+    if (!set) {
+      return res.status(404).json({ error: "Question set not found." });
+    }
+    res.status(200).json(set);
+  }
 }
 
 module.exports = new QuestionSetController();

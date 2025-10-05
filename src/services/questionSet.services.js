@@ -97,6 +97,20 @@ class QuestionSetService {
       where: { id },
     });
   }
+
+  async getSetById(id) {
+    return prisma.questionSet.findUnique({
+      where: { id },
+      include: {
+        passages: {
+          orderBy: {
+            partNumber: "asc",
+          },
+        },
+        questions: true,
+      },
+    });
+  }
 }
 
 module.exports = new QuestionSetService();
