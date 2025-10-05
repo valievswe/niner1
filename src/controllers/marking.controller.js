@@ -26,8 +26,16 @@ class MarkingController {
   }
 
   async getAllSubmissions(req, res) {
-    const submissions = await scheduleService.getAllScheduledExams();
-    res.status(200).json(submissions);
+    const { page = 1, limit = 10, search = "", status = "" } = req.query;
+
+    const paginatedResult = await markingService.getAllSubmissions({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      search,
+      status,
+    });
+
+    res.status(200).json(paginatedResult);
   }
 
   async releaseResults(req, res) {

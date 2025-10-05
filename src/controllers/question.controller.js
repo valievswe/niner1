@@ -3,12 +3,26 @@ const questionService = require("../services/question.services");
 class QuestionController {
   async create(req, res) {
     // 1. Basic validation
-    const { section, questionType, content, answer, questionSetId } = req.body;
+    const {
+      section,
+      questionType,
+      content,
+      answer,
+      questionSetId,
+      partNumber,
+    } = req.body;
 
-    if (!section || !questionType || !content || !answer || !questionSetId) {
+    if (
+      !section ||
+      !questionType ||
+      !content ||
+      !answer ||
+      !questionSetId ||
+      !partNumber
+    ) {
       return res.status(400).json({
         error:
-          "Missing required fields: section, questionType, content, answer, and questionSetId.",
+          "Missing required fields: section, questionType, content, answer, questionSetId, and partNumber.",
       });
     }
 
@@ -18,8 +32,12 @@ class QuestionController {
   }
 
   async getAll(req, res) {
-    const questions = await questionService.getAllQuestions();
-    res.status(200).json(questions);
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+
+    const paginatedResult = await questionService.getAllQuestions(page, limit);
+
+    res.status(200).json(paginatedResult);
   }
 
   async getById(req, res) {

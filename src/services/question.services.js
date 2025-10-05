@@ -33,12 +33,35 @@ class QuestionService {
     return newQuestion;
   }
 
-  async getAllQuestions() {
-    return prisma.question.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+  async getAllQuestions(page, limit) {
+    const skip = (page - 1) * limit;
+
+    // Use a transaction to get both the data and the total count efficiently
+    const [questions, totalItems] = await prisma.$transaction([
+      prisma.question.findMany({
+        skip: skip,
+        take: limit,
+        orderBy: {
+          createdAt: "desc",
+        },
+        // Include the related questionSet to display its name in the UI
+        include: {
+          questionSet: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      }),
+      prisma.question.count(),
+    ]);
+
+    return {
+      items: questions,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
+      currentPage: page,
+    };
   }
 
   async getQuestionById(id) {

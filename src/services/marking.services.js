@@ -73,6 +73,54 @@ const readingBandConversion = {
 };
 
 class MarkingService {
+  /**
+   * Retrieves a paginated and filtered list of all submissions.
+   * @param {Object} filters - An object containing page, limit, search, and status.
+   * @returns {Promise<Object>} An object with the paginated results.
+   */
+  async getAllSubmissions({ page, limit, search, status }) {
+    const skip = (page - 1) * limit;
+
+    const where = {};
+    if (status) {
+      where.status = status;
+    }
+    if (search) {
+      where.student = {
+        OR: [
+          { firstName: { contains: search, mode: "insensitive" } },
+          { lastName: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      };
+    }
+
+    const [submissions, totalItems, awaitingCount] = await prisma.$transaction([
+      prisma.scheduledMockExam.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          student: { select: { firstName: true, lastName: true, email: true } },
+          template: { select: { title: true } },
+        },
+      }),
+      prisma.scheduledMockExam.count({ where }),
+      prisma.scheduledMockExam.count({ where: { status: "COMPLETED" } }),
+    ]);
+
+    return {
+      items: submissions,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
+      currentPage: page,
+      awaitingCount: awaitingCount,
+    };
+  }
+
   async getSubmissionForMarking(scheduledExamId) {
     const submission = await prisma.scheduledMockExam.findUnique({
       where: { id: scheduledExamId },
