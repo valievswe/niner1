@@ -4,6 +4,57 @@ const prisma = require("../lib/prisma");
 // This service depends on the marking service for score calculation
 const markingService = require("./marking.services");
 
+/**
+ * Helper function to add display numbers to questions.
+ * - INSTRUCTION and IMAGE_DISPLAY types don't get numbered
+ * - MATCHING and MAP_LABELING types can occupy multiple numbers based on their items (prompts/labels)
+ * - All other question types get a single sequential number
+ */
+function addDisplayNumbers(templateQuestions) {
+  const NON_NUMBERED_TYPES = ["INSTRUCTION", "IMAGE_DISPLAY"];
+  const MULTI_ITEM_TYPES = ["MATCHING", "MAP_LABELING"];
+
+  let currentNumber = 1;
+
+  return templateQuestions.map((tq) => {
+    const questionType = tq.question.questionType;
+    const content = tq.question.content;
+    const answer = tq.question.answer;
+
+    // Check if this question type should not be numbered
+    if (NON_NUMBERED_TYPES.includes(questionType)) {
+      return {
+        ...tq,
+        displayNumberStart: null,
+        displayNumberEnd: null,
+      };
+    }
+
+    // Only MATCHING and MAP_LABELING get multiple numbers based on their items
+    let itemCount = 1;
+
+    if (MULTI_ITEM_TYPES.includes(questionType)) {
+      if (questionType === 'MATCHING') {
+        // Count the number of prompts
+        itemCount = content?.prompts?.length || 1;
+      } else if (questionType === 'MAP_LABELING') {
+        // Count the number of labels in the answer object
+        itemCount = answer ? Object.keys(answer).length : 1;
+      }
+    }
+
+    const startNumber = currentNumber;
+    const endNumber = currentNumber + itemCount - 1;
+    currentNumber = endNumber + 1; // Next question starts after this one
+
+    return {
+      ...tq,
+      displayNumberStart: startNumber,
+      displayNumberEnd: endNumber,
+    };
+  });
+}
+
 class ExamService {
   /**
    * Starts a scheduled exam for a student, enforcing the availability window.
@@ -94,13 +145,16 @@ class ExamService {
       }
     );
 
+    // Add display numbers to questions
+    const questionsWithDisplayNumbers = addDisplayNumbers(fullTemplate.questions);
+
     // Return Complete Data Structure to Frontend
     return {
       scheduledExamId: updatedExam.id,
       title: fullTemplate.title,
       audioFiles: fullTemplate.audioFiles,
       sectionDurations: fullTemplate.sectionDurations,
-      questions: fullTemplate.questions,
+      questions: questionsWithDisplayNumbers,
       startedAt: updatedExam.startedAt.toISOString(),
     };
   }
@@ -308,12 +362,15 @@ class ExamService {
     console.log("Template sectionDurations:", fullTemplate.sectionDurations);
     console.log("--- End getInProgressExam ---");
 
+    // Add display numbers to questions
+    const questionsWithDisplayNumbers = addDisplayNumbers(fullTemplate.questions);
+
     return {
       scheduledExamId: scheduledExam.id,
       title: fullTemplate.title,
       audioFiles: fullTemplate.audioFiles,
       sectionDurations: fullTemplate.sectionDurations,
-      questions: fullTemplate.questions,
+      questions: questionsWithDisplayNumbers,
       startedAt: scheduledExam.startedAt.toISOString(),
     };
   }
